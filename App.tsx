@@ -1,118 +1,190 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
-import React from 'react';
-import type {PropsWithChildren} from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
   View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  FlatList,
+  StyleSheet,
+  Alert,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
 
-type SectionProps = PropsWithChildren<{
+interface Task {
+  id: number;
   title: string;
-}>;
-
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
+  completed: boolean;
 }
 
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
+const STORAGE_KEY = '@tasks';
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+const App: React.FC = () => {
+  const [task, setTask] = useState<string>('');  // State for the input field
+  const [tasks, setTasks] = useState<Task[]>([]);  // State for the list of tasks
+
+  // Load tasks from AsyncStorage when the app starts
+  useEffect(() => {
+    loadTasks();
+  }, []);
+
+  // Function to load tasks from AsyncStorage
+  const loadTasks = async () => {
+    try {
+      const storedTasks = await AsyncStorage.getItem(STORAGE_KEY);
+      if (storedTasks) {
+        setTasks(JSON.parse(storedTasks));
+      }
+    } catch (e) {
+      console.log('Failed to load tasks.');
+    }
   };
 
+  // Function to save tasks to AsyncStorage
+  const saveTasks = async (tasks: Task[]) => {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    } catch (e) {
+      console.log('Failed to save tasks.');
+    }
+  };
+
+  // Add a new task
+  const addTask = () => {
+    if (task.trim() === '') {
+      Alert.alert('Error', 'Please enter a task');
+      return;
+    }
+
+    const newTask: Task = { id: Date.now(), title: task, completed: false };
+    const updatedTasks = [...tasks, newTask];
+    setTasks(updatedTasks);
+    saveTasks(updatedTasks);  // Save the updated tasks
+    setTask('');  // Clear the input field
+  };
+
+  // Delete a task
+  const deleteTask = (id: number) => {
+    const updatedTasks = tasks.filter((item) => item.id !== id);
+    setTasks(updatedTasks);
+    saveTasks(updatedTasks);  // Save the updated tasks
+  };
+
+  // Toggle task completed state
+  const toggleComplete = (id: number) => {
+    const updatedTasks = tasks.map((item) =>
+      item.id === id ? { ...item, completed: !item.completed } : item
+    );
+    setTasks(updatedTasks);
+    saveTasks(updatedTasks);  // Save the updated tasks
+  };
+
+  // Render a single task
+  const renderTask = ({ item }: { item: Task }) => (
+    <View style={styles.taskContainer}>
+      <Text
+        style={[
+          styles.taskText,
+          { textDecorationLine: item.completed ? 'line-through' : 'none' },
+        ]}
+      >
+        {item.title}
+      </Text>
+      <View style={styles.buttons}>
+        <TouchableOpacity onPress={() => toggleComplete(item.id)}>
+          <Text style={styles.completeButton}>
+            {item.completed ? 'Undo' : 'Complete'}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => deleteTask(item.id)}>
+          <Text style={styles.deleteButton}>Delete</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
+    <SafeAreaView style={styles.container}>
+      <Text style={styles.header}>Todo List</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Add a new task..."
+        value={task}
+        onChangeText={(text) => setTask(text)}
       />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
+      <TouchableOpacity style={styles.addButton} onPress={addTask}>
+        <Text style={styles.addButtonText}>Add Task</Text>
+      </TouchableOpacity>
+      <FlatList
+        data={tasks}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={renderTask}
+      />
     </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
+  container: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: '#f5f5f5',
   },
-  sectionTitle: {
+  header: {
     fontSize: 24,
-    fontWeight: '600',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 20,
   },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
+  input: {
+    backgroundColor: '#fff',
+    padding: 10,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    marginBottom: 10,
   },
-  highlight: {
-    fontWeight: '700',
+  addButton: {
+    backgroundColor: '#28a745',
+    padding: 15,
+    borderRadius: 5,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  addButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  taskContainer: {
+    backgroundColor: '#fff',
+    padding: 15,
+    borderRadius: 5,
+    marginBottom: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  taskText: {
+    fontSize: 16,
+    flex: 1,
+  },
+  buttons: {
+    flexDirection: 'row',
+  },
+  completeButton: {
+    marginRight: 10,
+    color: '#28a745',
+    fontWeight: 'bold',
+  },
+  deleteButton: {
+    color: '#dc3545',
+    fontWeight: 'bold',
   },
 });
 
 export default App;
+
+
+// Created by @Ankit_Singh
