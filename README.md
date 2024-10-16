@@ -77,3 +77,6 @@ To learn more about React Native, take a look at the following resources:
 - [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
 - [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
 - [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+
+## Install Directly
+- To directly install the app use : "https://drive.google.com/file/d/1W_1VOEygmK13dggSqx9GqpOYyB5Y7hXH/view?usp=drive_link"
